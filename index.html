@@ -31,7 +31,7 @@
 
         .container {
             background-color: var(--card-bg);
-            padding: 2.5rem;
+            padding: 2rem;
             border-radius: 32px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.06);
             max-width: 900px;
@@ -40,7 +40,7 @@
         }
 
         .canvas-container {
-            background-color: #eee;
+            background-color: #e5e5e5;
             border-radius: 20px;
             margin-bottom: 2rem;
             overflow: hidden;
@@ -53,65 +53,56 @@
 
         canvas {
             max-width: 100%;
-            max-height: 75vh;
+            max-height: 70vh;
             display: none;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
         .controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
         }
 
         button, .upload-label {
             background-color: var(--accent-color);
             color: white;
             border: none;
-            padding: 14px;
-            border-radius: 14px;
+            padding: 12px;
+            border-radius: 12px;
             cursor: pointer;
             font-weight: 600;
-            transition: all 0.2s;
+            transition: 0.2s;
             font-size: 0.85rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
         button:hover, .upload-label:hover {
-            transform: translateY(-2px);
             filter: brightness(1.1);
+            transform: translateY(-1px);
         }
 
         #upload { display: none; }
         .btn-secondary { background-color: var(--secondary-btn); color: var(--text-color); }
         .btn-primary { background-color: var(--primary-btn); color: white; }
-
-        h1 { margin-top: 0; }
-        p { margin-bottom: 2rem; opacity: 0.7; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🎨 Artist's Mirror</h1>
-    <p>Check your proportions and values easily.</p>
-
+    <h2 style="margin-top:0">🎨 Artist's Mirror</h2>
     <div class="canvas-container">
-        <span id="placeholder">Upload an image to start</span>
+        <span id="placeholder">Upload image to flip & check</span>
         <canvas id="canvas"></canvas>
     </div>
 
     <div class="controls">
-        <label for="upload" class="upload-label btn-primary">1. Upload</label>
+        <label for="upload" class="upload-label btn-primary">1. Upload Image</label>
         <input type="file" id="upload" accept="image/*">
         
         <button onclick="flipH()">Flip Horizontal</button>
         <button onclick="flipV()">Flip Vertical</button>
         <button onclick="toggleBW()" class="btn-secondary">B&W Mode</button>
         <button onclick="toggleGrid()" class="btn-secondary">Grid Overlay</button>
-        
         <button onclick="download()" class="btn-primary">Download</button>
     </div>
 </div>
@@ -130,13 +121,13 @@
 
     upload.onchange = (e) => {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = (ev) => {
             img.onload = () => {
                 placeholder.style.display = 'none';
                 canvas.style.display = 'block';
                 render();
             };
-            img.src = event.target.result;
+            img.src = ev.target.result;
         };
         reader.readAsDataURL(e.target.files[0]);
     };
@@ -149,17 +140,72 @@
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        // --- DEL 1: RITA BILDEN ---
         ctx.save();
+        if (showBW) ctx.filter = 'grayscale(100%)';
         
-        // 1. Hantera Filter (Svartvitt)
-        ctx.filter = showBW ? 'grayscale(100%)' : 'none';
-
-        // 2. Hantera Spegling
         ctx.translate(canvas.width/2, canvas.height/2);
         ctx.scale(sX, sV);
         ctx.translate(-canvas.width/2, -canvas.height/2);
         
-        // 3. Rita bilden
         ctx.drawImage(img, 0, 0);
+        ctx.restore();
+
+        // --- DEL 2: RITA GRID ---
+        // VIKTIGT: Vi nollställer filtret manuellt här för att vara säkra
+        ctx.filter = "none"; 
+        if (showGrid) {
+            drawGrid();
+        }
+    }
+
+    function drawGrid() {
+        const sections = 10;
+        const w = canvas.width;
+        const h = canvas.height;
         
-        ctx.restore(); //
+        ctx.lineWidth = Math.max(1, w / 500); // Dynamisk tjocklek
+
+        for (let i = 1; i < sections; i++) {
+            const x = (i * w) / sections;
+            const y = (i * h) / sections;
+
+            // Vertikala linjer
+            drawLine(x, 0, x, h);
+            // Horisontella linjer
+            drawLine(0, y, w, y);
+        }
+    }
+
+    function drawLine(x1, y1, x2, y2) {
+        // Vi ritar en "dubbel" linje för maximal synlighet
+        // Först en mörk linje
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.4)";
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        
+        // Sedan en ljus linje precis bredvid (offset 1px)
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.moveTo(x1 + 1, y1 + 1);
+        ctx.lineTo(x2 + 1, y2 + 1);
+        ctx.stroke();
+    }
+
+    function flipH() { sX *= -1; render(); }
+    function flipV() { sV *= -1; render(); }
+    function toggleBW() { showBW = !showBW; render(); }
+    function toggleGrid() { showGrid = !showGrid; render(); }
+    
+    function download() {
+        const link = document.createElement('a');
+        link.download = 'artist-check.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+</script>
+
+</body>
+</html>
